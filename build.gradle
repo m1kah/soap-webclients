@@ -12,18 +12,31 @@ repositories {
     mavenCentral()
 }
 
+configurations {
+    xjc
+}
+
 dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib'
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
     implementation 'org.jetbrains.kotlin:kotlin-reflect'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactor'
+    // Option 1, Jackson XML parsing
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.11.2'
     implementation 'com.fasterxml.jackson.module:jackson-module-kotlin:2.11.2'
+    // Option 2, Java WS APIs
+    implementation 'jakarta.xml.ws:jakarta.xml.ws-api:2.3.3'
+    runtimeOnly 'com.sun.xml.ws:jaxws-rt:2.3.3'
+    implementation 'com.sun.xml.messaging.saaj:saaj-impl:1.5.1'
+    testImplementation 'io.rest-assured:rest-assured:4.2.0'
+    testImplementation 'io.rest-assured:json-path:4.2.0'
+    testImplementation 'io.rest-assured:xml-path:4.2.0'
     testImplementation('org.springframework.boot:spring-boot-starter-test') {
         exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
     }
     testImplementation 'io.projectreactor:reactor-test'
+    xjc 'org.glassfish.jaxb:jaxb-xjc:2.3.3'
 }
 
 test {
@@ -35,3 +48,18 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
         jvmTarget = '11'
     }
 }
+
+def generatedSourcesDir = "$buildDir/generated-sources"
+
+task xjc(type: JavaExec) {
+    description 'Generates Java classes from XSD'
+    file("$generatedSourcesDir/xsd").mkdirs()
+    classpath configurations.xjc.files
+    main = 'com.sun.tools.xjc.Driver'
+    args '-d', "$generatedSourcesDir/xsd",
+            'src/main/resources/calculator.xsd'
+}
+
+sourceSets.main.java.srcDirs += "$generatedSourcesDir/xsd"
+
+tasks.classes.dependsOn tasks.xjc

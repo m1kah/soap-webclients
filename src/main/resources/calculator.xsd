@@ -1,0 +1,30 @@
+<xsd:schema attributeFormDefault="unqualified" elementFormDefault="unqualified"
+            targetNamespace="http://superbiz.org/wsdl" xmlns:tns="http://superbiz.org/wsdl"
+            xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <xsd:element name="multiply" type="tns:multiply"/>
+    <xsd:complexType name="multiply">
+        <xsd:sequence>
+            <xsd:element name="arg0" type="xsd:int"/>
+            <xsd:element name="arg1" type="xsd:int"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="multiplyResponse" type="tns:multiplyResponse"/>
+    <xsd:complexType name="multiplyResponse">
+        <xsd:sequence>
+            <xsd:element name="return" type="xsd:int"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="sum" type="tns:sum"/>
+    <xsd:complexType name="sum">
+        <xsd:sequence>
+            <xsd:element name="arg0" type="xsd:int"/>
+            <xsd:element name="arg1" type="xsd:int"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="sumResponse" type="tns:sumResponse"/>
+    <xsd:complexType name="sumResponse">
+        <xsd:sequence>
+            <xsd:element name="return" type="xsd:int"/>
+        </xsd:sequence>
+    </xsd:complexType>
+</xsd:schema>

@@ -1,68 +1,57 @@
-package com.mika.webclientsoap
+package com.mika.webclientsoap.jackson
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty
 import com.fasterxml.jackson.module.kotlin.KotlinModule
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.ExtendWith
-import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.junit.jupiter.SpringExtension
+import com.mika.webclientsoap.Calculator
+import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.ClientResponse
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
 
-@ExtendWith(SpringExtension::class)
-@SpringBootTest
-class WebClientSoapTest {
-    @Autowired
-    lateinit var webClient: WebClient
+class JacksonCalculator(
+    val webClient: WebClient
+): Calculator {
     val mapper = XmlMapper()
         .registerModule(KotlinModule())
 
-    @Test
-    fun add() {
-        val res = webClient
+    override fun sum(x: Int, y: Int): Mono<Int> {
+        return webClient
             .post()
             .uri("/calculator")
-            .body(BodyInserters.fromProducer(Mono.just(addEnvelope(12, 9)), String::class.java))
-            .exchange().block()!!
-        val body = printAndExtractBody(res)
-        assertEquals(200, res.rawStatusCode())
-
-        val returnValue = soapMapper(body).body.sumResponse?.`return`
-        assertEquals(12 + 9, returnValue)
+            .contentType(MediaType.TEXT_XML)
+            .body(BodyInserters.fromProducer(Mono.just(addEnvelope(x, y)), String::class.java))
+            .accept(MediaType.TEXT_XML)
+            .exchange()
+            .flatMap { printAndExtractBody(it) }
+            .map { soapMapper(it).body.sumResponse?.`return` }
     }
 
-    @Test
-    fun multiply() {
-        val res = webClient
+    override fun multiply(x: Int, y: Int): Mono<Int> {
+        return webClient
             .post()
             .uri("/calculator")
-            .body(BodyInserters.fromProducer(Mono.just(multiplyEnvelope(12, 9)), String::class.java))
-            .exchange().block()!!
-        val body = printAndExtractBody(res)
-        assertEquals(200, res.rawStatusCode())
-
-        val returnValue = soapMapper(body).body.multiplyResponse?.`return`
-        assertEquals(12 * 9, returnValue)
+            .contentType(MediaType.TEXT_XML)
+            .body(BodyInserters.fromProducer(Mono.just(multiplyEnvelope(x, y)), String::class.java))
+            .accept(MediaType.TEXT_XML)
+            .exchange()
+            .flatMap { printAndExtractBody(it) }
+            .map { soapMapper(it).body.multiplyResponse?.`return` }
     }
 
-    private fun printAndExtractBody(res: ClientResponse): String {
-        val body = res.bodyToMono(String::class.java).block()
-        log.info("${res.statusCode()}")
-        log.info(body)
-        return body ?: ""
+    private fun printAndExtractBody(res: ClientResponse): Mono<String> {
+        if (res.statusCode().isError) {
+            return Mono.error(IllegalStateException("Got HTTP status code ${res.statusCode()}"))
+        }
+        return res.bodyToMono(String::class.java)
     }
 
-    fun soapMapper(message: String): Envelope {
+    private fun soapMapper(message: String): Envelope {
         return mapper.readValue(message, Envelope::class.java)
     }
 
-    fun addEnvelope(x: Int, y: Int): String =
+    private fun addEnvelope(x: Int, y: Int): String =
         """
             <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
                 <SOAP-ENV:Header/>
@@ -75,7 +64,7 @@ class WebClientSoapTest {
             </SOAP-ENV:Envelope>
         """.trimIndent()
 
-    fun multiplyEnvelope(x: Int, y: Int): String =
+    private fun multiplyEnvelope(x: Int, y: Int): String =
         """
             <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
                 <SOAP-ENV:Header/>
@@ -87,11 +76,8 @@ class WebClientSoapTest {
                 </SOAP-ENV:Body>
             </SOAP-ENV:Envelope>
         """.trimIndent()
-
-    companion object {
-        val log = LoggerFactory.getLogger(WebClientSoapTest::class.java)
-    }
 }
+
 
 data class Envelope(
     @JacksonXmlProperty(localName = "Body")
